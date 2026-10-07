@@ -10,8 +10,11 @@
     { e: "😞", l: "Journée difficile" }, { e: "😕", l: "Bof" }, { e: "😐", l: "Correcte" },
     { e: "🙂", l: "Bonne journée" }, { e: "🤩", l: "Excellente journée" }
   ];
-  const SPORTS = [["foot", "⚽ Foot"], ["natation", "🏊 Natation"], ["muscu", "🏋️ Muscu"], ["course", "🏃 Course"], ["marche", "🚶 Marche"], ["mobilite", "🧘 Étirements"], ["repos", "😴 Repos"]];
-  const XP = { base: 50, deep: 15, mood: 5, streakStep: 3, streakMax: 30, grat: 15, victoire: 10, objectif: 10, objCheck: 10, sport: 10, week: 30, badge: 20 };
+  const ESPRIT = [["lecture", "📖 10 min de lecture"], ["bonneaction", "🤝 Une bonne action"], ["proche", "📞 Appel à un proche"], ["podcast", "🎧 Podcast utile"], ["sansecran", "📵 Soirée sans écran"], ["calme", "😌 Moment calme"]];
+  const XP = { base: 50, deep: 15, mood: 5, streakStep: 3, streakMax: 30, grat: 15, victoire: 10, objectif: 10, objCheck: 10, esprit: 10, week: 30, badge: 20 };
+  /* Anciennes versions : thème « santé » renommé, défis physiques retirés */
+  const LEGACY_THEMES = { sante: "bienetre" };
+  const LEGACY_BADGES = { maitre_sante: "maitre_bienetre" };
 
   /* ---------- Utilitaires ---------- */
   const $ = (s, r = document) => r.querySelector(s);
@@ -37,9 +40,20 @@
       badges: {}, exported: false, theme: "auto", welcomed: false, shieldUsed: 0 };
   }
   let S;
+  function migrate() {
+    try {
+      ["assigned", "swaps", "entries", "bonus", "weeks", "frozen", "badges"].forEach(f => { if (!S[f] || typeof S[f] !== "object") S[f] = {}; });
+      Object.values(S.entries).forEach(e => { if (e && LEGACY_THEMES[e.theme]) e.theme = LEGACY_THEMES[e.theme]; });
+      Object.entries(LEGACY_BADGES).forEach(([o, n]) => { if (S.badges[o]) { if (!S.badges[n]) S.badges[n] = S.badges[o]; delete S.badges[o]; } });
+      const t = todayKey(); // défi du jour retiré et pas encore fait : on en tire un nouveau
+      if (S.assigned[t] && !BY_ID[S.assigned[t]] && !S.entries[t]) delete S.assigned[t];
+      S.v = 2;
+    } catch (e) { /* données anciennes illisibles : on garde ce qui est possible */ }
+  }
   function load() {
     try { const raw = localStorage.getItem(KEY); S = raw ? Object.assign(freshState(), JSON.parse(raw)) : freshState(); }
     catch (e) { S = freshState(); }
+    migrate();
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(S)); }
@@ -144,7 +158,7 @@
       themesTouched: THEME_KEYS.filter(t => themeCounts[t] > 0).length,
       longAnswers: es.filter(([, e]) => (e.answer || "").length >= 200).length,
       grat: bonus.filter(b => b.xp && b.xp.grat).length, obj: bonus.filter(b => b.xp && b.xp.objectif).length,
-      objOk: bonus.filter(b => b.objCheck === true).length, sport: bonus.filter(b => b.xp && b.xp.sport && b.sport !== "repos").length,
+      objOk: bonus.filter(b => b.objCheck === true).length, esprit: bonus.filter(b => b.xp && b.xp.esprit).length,
       perfectWeek: Object.values(weeksCount).some(n => n >= 7),
       weeksDone: Object.values(S.weeks).filter(w => w.xp).length, level: levelInfo(totalXP()).n,
       exported: !!S.exported, shieldUsed: S.shieldUsed || 0
@@ -168,7 +182,7 @@
     { id: "gratitude", i: "🙏", n: "Cœur reconnaissant", d: "10 fois « 3 gratitudes »", t: s => s.grat >= 10 },
     { id: "planif", i: "🗓️", n: "Planificateur", d: "10 objectifs de demain fixés", t: s => s.obj >= 10 },
     { id: "parole", i: "✅", n: "Parole tenue", d: "10 objectifs atteints", t: s => s.objOk >= 10 },
-    { id: "sportif", i: "🏃", n: "Corps en mouvement", d: "15 séances de sport notées", t: s => s.sport >= 15 },
+    { id: "esprit", i: "📖", n: "Esprit nourri", d: "15 quêtes « Nourrir son esprit »", t: s => s.esprit >= 15 },
     { id: "parfaite", i: "🌟", n: "Semaine parfaite", d: "7 défis sur 7 dans une semaine", t: s => s.perfectWeek },
     { id: "introspection", i: "🔍", n: "Introspection", d: "4 bilans hebdo remplis", t: s => s.weeksDone >= 4 },
     { id: "bouclier", i: "🛡️", n: "Sauvé !", d: "Un bouclier a protégé votre série", t: s => s.shieldUsed >= 1 },
@@ -230,7 +244,7 @@
       if (t - t0 < 2600) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
     })(t0);
   }
-  function themePill(t) { const th = THEMES[t]; return `<span class="pill theme" style="background:${th.color}">${th.emoji} ${esc(th.short)}</span>`; }
+  function themePill(t) { const th = THEMES[LEGACY_THEMES[t] || t]; if (!th) return ""; return `<span class="pill theme" style="background:${th.color}">${th.emoji} ${esc(th.short)}</span>`; }
   function greeting() { const h = new Date().getHours(); return h >= 5 && h < 12 ? "Bonjour" : h >= 12 && h < 18 ? "Bon après-midi" : "Bonsoir"; }
   function applyTheme() {
     const r = document.documentElement;
@@ -375,8 +389,8 @@
     h += `<details class="card quest"><summary><div class="q-ico">🗓️</div><div class="q-body"><div class="q-title">Objectif de demain</div><div class="q-xp">+${XP.objectif} XP · vérifié demain soir</div></div>${check(xp.objectif)}</summary>
       <div class="q-content"><input type="text" data-field="objectif" placeholder="Demain, je vais…" value="${esc(b.objectif || "")}">
       <button class="btn primary" data-save="objectif">${xp.objectif ? "Mettre à jour" : "Valider"}</button></div></details>`;
-    h += `<details class="card quest"><summary><div class="q-ico">💪</div><div class="q-body"><div class="q-title">Corps en mouvement</div><div class="q-xp">+${XP.sport} XP · qu'avez-vous fait aujourd'hui ?</div></div>${check(xp.sport)}</summary>
-      <div class="q-content"><div class="choices">${SPORTS.map(([v, l]) => `<button data-sport="${v}" class="${b.sport === v ? "sel" : ""}">${l}</button>`).join("")}</div></div></details>`;
+    h += `<details class="card quest"><summary><div class="q-ico">🧠</div><div class="q-body"><div class="q-title">Nourrir son esprit</div><div class="q-xp">+${XP.esprit} XP · qu'avez-vous fait pour vous aujourd'hui ?</div></div>${check(xp.esprit)}</summary>
+      <div class="q-content"><div class="choices">${ESPRIT.map(([v, l]) => `<button data-esprit="${v}" class="${b.esprit === v ? "sel" : ""}">${l}</button>`).join("")}</div></div></details>`;
     return h;
   }
   function bindBonus(k) {
@@ -399,10 +413,10 @@
       }
       renderTop(); route();
     });
-    $$("[data-sport]").forEach(btn => btn.onclick = () => {
-      const first = !(S.bonus[k] && S.bonus[k].xp && S.bonus[k].xp.sport);
-      act(() => { const b = get(); b.sport = btn.dataset.sport; b.xp.sport = XP.sport; });
-      if (first) toast("💪", btn.dataset.sport === "repos" ? `La récupération fait partie de l'entraînement. +${XP.sport} XP` : `Bien joué ! +${XP.sport} XP`);
+    $$("[data-esprit]").forEach(btn => btn.onclick = () => {
+      const first = !(S.bonus[k] && S.bonus[k].xp && S.bonus[k].xp.esprit);
+      act(() => { const b = get(); b.esprit = btn.dataset.esprit; b.xp.esprit = XP.esprit; });
+      if (first) toast("🧠", `Bien joué, votre esprit vous dit merci ! +${XP.esprit} XP`);
       route();
     });
   }
@@ -414,7 +428,7 @@
     const q = jSearch.toLowerCase();
     const list = keys.filter(k => {
       const e = S.entries[k], b = S.bonus[k] || {};
-      if (jFilter !== "all" && (!e || e.theme !== jFilter)) return false;
+      if (jFilter !== "all" && (!e || (LEGACY_THEMES[e.theme] || e.theme) !== jFilter)) return false;
       if (!q) return true;
       const hay = [e && e.answer, e && BY_ID[e.id] && BY_ID[e.id].title, b.victoire, b.objectif, (b.grat || []).join(" ")].join(" ").toLowerCase();
       return hay.includes(q);
@@ -425,14 +439,14 @@
     if (!list.length) h += `<div class="empty"><div class="big">📖</div><p>${Object.keys(S.entries).length ? "Aucune entrée ne correspond." : "Votre journal est vide pour l'instant.<br>Chaque défi validé viendra s'écrire ici."}</p></div>`;
     list.forEach(k => {
       const e = S.entries[k], b = S.bonus[k] || {};
-      const sp = SPORTS.find(s => s[0] === b.sport);
+      const sp = ESPRIT.find(s => s[0] === b.esprit);
       h += `<article class="card entry"><div class="e-head"><span class="e-date">${esc(fmtDate(k, { weekday: "short", day: "numeric", month: "short", year: "numeric" }))}</span>
         <span>${e ? themePill(e.theme) : ""} ${e && e.mood ? MOODS[e.mood - 1].e : ""}</span></div>
         ${e ? `<div class="e-title">${esc(BY_ID[e.id] ? BY_ID[e.id].title : "Défi")}</div><div class="answer">${esc(e.answer)}</div>` : `<div class="small muted">Pas de défi ce soir-là, seulement des quêtes bonus.</div>`}
         ${b.grat ? `<div class="e-extra">🙏 <b>Gratitudes :</b> ${b.grat.map(esc).join(" · ")}</div>` : ""}
         ${b.victoire ? `<div class="e-extra">🏆 <b>Victoire :</b> ${esc(b.victoire)}</div>` : ""}
         ${b.objectif ? `<div class="e-extra">🗓️ <b>Objectif du lendemain :</b> ${esc(b.objectif)}${S.bonus[addDays(k, 1)] && S.bonus[addDays(k, 1)].objCheck != null ? (S.bonus[addDays(k, 1)].objCheck ? " ✅" : " ❌") : ""}</div>` : ""}
-        ${sp ? `<div class="e-extra">💪 <b>Sport :</b> ${sp[1]}</div>` : ""}
+        ${sp ? `<div class="e-extra">🧠 <b>Pour mon esprit :</b> ${sp[1]}</div>` : ""}
         <div class="row between mt"><span class="small muted">+${dayXP(k)} XP</span>${e ? `<button class="linkbtn" data-edit="${k}">Modifier</button>` : ""}</div></article>`;
     });
     $("#view").innerHTML = h;
@@ -459,7 +473,7 @@
     else if (done.length >= 6) coach = "Semaine de champion. Votre régularité est votre super-pouvoir, continuez comme ça.";
     else if (done.length >= 4) coach = "Belle semaine ! Vous avez fait plus de la moitié des soirs. Visez un soir de plus la semaine prochaine.";
     else coach = "Vous avez posé des bases. Pour progresser, fixez un horaire fixe pour votre défi (par exemple 22 h).";
-    const themesW = {}; done.forEach(k => { const t = S.entries[k].theme; themesW[t] = (themesW[t] || 0) + 1; });
+    const themesW = {}; done.forEach(k => { const t = LEGACY_THEMES[S.entries[k].theme] || S.entries[k].theme; if (THEMES[t]) themesW[t] = (themesW[t] || 0) + 1; });
     const st = stats();
     let h = `<div class="weeknav"><button id="wprev" aria-label="Semaine précédente">‹</button>
       <div class="center"><b>${label}</b><div class="small muted">${fmtDate(days[0], { day: "numeric", month: "short" })} – ${fmtDate(days[6], { day: "numeric", month: "short" })}</div></div>
@@ -542,7 +556,7 @@
       <input type="file" id="imp-file" accept="application/json,.json,text/plain" class="hidden">
       <p class="small muted" style="margin-bottom:0">${st.total} défis · ${Object.keys(S.bonus).length} jours de quêtes · ${Object.keys(S.weeks).length} bilans</p></section>
       <section class="card"><button class="btn danger block" id="reset">Tout effacer et recommencer</button></section>
-      <p class="small muted center">Défi du soir · v1.0 · 100 % hors ligne, aucune donnée envoyée</p>`;
+      <p class="small muted center">Défi du soir · v1.1 · 100 % hors ligne, aucune donnée envoyée</p>`;
     $("#view").innerHTML = h;
     $("#p-name-save").onclick = () => { S.name = $("#p-name").value.trim().slice(0, 30); save(); renderTop(); toast("👋", S.name ? `Enchanté, ${esc(S.name)} !` : "Prénom effacé."); };
     $$("[data-th]").forEach(b => b.onclick = () => { S.theme = b.dataset.th; save(); applyTheme(); renderProfil(); });
@@ -586,7 +600,7 @@
     let obj; try { obj = JSON.parse(text); } catch (e) { toast("⚠️", "Ce fichier n'est pas une sauvegarde valide."); return; }
     const data = obj && obj.data ? obj.data : obj;
     if (!data || typeof data !== "object" || typeof data.entries !== "object" || typeof data.seed !== "number") { toast("⚠️", "Sauvegarde non reconnue."); return; }
-    S = Object.assign(freshState(), data); S.welcomed = true; Object.keys(seqCache).forEach(k => delete seqCache[k]);
+    S = Object.assign(freshState(), data); migrate(); S.welcomed = true; Object.keys(seqCache).forEach(k => delete seqCache[k]);
     save(); closeModal(); applyTheme(); renderTop(); go("soir");
     toast("✅", `Sauvegarde importée : ${plural(Object.keys(S.entries).length, "défi")} retrouvés.`);
   }
@@ -604,7 +618,7 @@
     openModal(`<div class="center"><div style="font-size:52px">🌙🔥</div><h2 style="margin:6px 0 4px">Bienvenue dans Défi du soir</h2>
       <p class="muted" style="margin:0 0 14px">Chaque soir, 10 à 20 minutes pour devenir une meilleure version de vous-même.</p></div>
       <div class="small" style="display:grid;gap:8px;margin-bottom:14px">
-        <div>🎯 <b>Un défi par soir</b> : confiance, discipline, leadership, vente, finances, santé, mental, apprentissage.</div>
+        <div>🎯 <b>Un défi par soir</b> : confiance, discipline, leadership, vente, finances, bien-être, mental, apprentissage.</div>
         <div>⭐ <b>Gagnez de l'XP</b>, montez de niveau de « Recrue » à « Légende ».</div>
         <div>🔥 <b>Gardez votre série</b> et débloquez ${BADGES.length} badges.</div>
         <div>🔒 <b>Tout reste sur votre téléphone.</b></div></div>
@@ -636,7 +650,13 @@
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if ("serviceWorker" in navigator && location.protocol !== "file:") {
     window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+    // Nouvelle version installée : on recharge une fois pour l'afficher (sauf si une réponse est en cours d'écriture)
+    const hadController = !!navigator.serviceWorker.controller; let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloaded) return; const ta = document.querySelector("textarea");
+      if (ta && ta.value.trim()) return; reloaded = true; location.reload();
+    });
   }
   // Exposé pour les tests
-  window.__DDS = { get state() { return S; }, todayKey, streak, totalXP, levelInfo, cycleSeq, BADGES };
+  window.__DDS = { get state() { return S; }, todayKey, streak, totalXP, levelInfo, cycleSeq, BADGES, version: "1.1" };
 })();
