@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Défi du soir</title>
+<meta name="description" content="Chaque soir, un défi de développement personnel. XP, niveaux, séries et badges.">
+<meta name="theme-color" content="#0f1020" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f4ff" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Défi du soir">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="tb-left">
+      <div class="hello" id="hello">Bonsoir</div>
+      <div class="date" id="today-date"></div>
+    </div>
+    <div class="tb-right">
+      <div class="chip flame" id="chip-streak" title="Série en cours"><span class="fl">🔥</span><b id="streak-n">0</b></div>
+      <div class="chip shield" id="chip-shield" title="Boucliers : protègent votre série si vous manquez un soir"><span>🛡️</span><b id="shield-n">0</b></div>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="soir" class="active"><span class="ti">🌙</span><span>Ce soir</span></button>
+    <button data-tab="journal"><span class="ti">📖</span><span>Journal</span></button>
+    <button data-tab="bilan"><span class="ti">📊</span><span>Bilan</span></button>
+    <button data-tab="profil"><span class="ti">🏆</span><span>Profil</span></button>
+  </nav>
+</div>
+<div id="toasts"></div>
+<canvas id="confetti"></canvas>
+<div id="modal" class="modal hidden"><div class="modal-card" id="modal-card"></div></div>
+<noscript>Cette application a besoin de JavaScript.</noscript>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
